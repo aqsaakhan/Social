@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Social Media Analytics Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #1877f2;
+            text-align: center;
+        }
+        #post-form {
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        #post-content {
+            width: 100%;
+            height: 100px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: 'Roboto', sans-serif;
+        }
+        #submit-post {
+            background-color: #1877f2;
+            color: #ffffff;
+            border: none;
+            border-radius: 4px;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .post-card {
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .post-content {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        .post-analytics {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #e0e0e0;
+        }
+        .analytics-item {
+            text-align: center;
+        }
+        .analytics-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1877f2;
+        }
+        .analytics-type {
+            font-size: 14px;
+            color: #65676b;
+        }
+        .post-timestamp {
+            font-size: 12px;
+            color: #65676b;
+            text-align: right;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Social Media Analytics Dashboard</h1>
+        <div id="post-form">
+            <textarea id="post-content" placeholder="What's on your mind?"></textarea>
+            <button id="submit-post">Post</button>
+        </div>
+        <div id="posts"></div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        $(document).ready(function() {
+            const socket = io();
+
+            function updatePosts() {
+                $.get('/api/posts_with_analytics', function(data) {
+                    console.log("Received data:", data);  // Debug log
+                    $('#posts').empty();
+                    data.forEach(function(post) {
+                        let analyticsHtml = '';
+                        if (post.analytics && post.analytics.length > 0) {
+                            post.analytics.forEach(function(item) {
+                                analyticsHtml += `
+                                    <div class="analytics-item">
+                                        <div class="analytics-value">${item.value}</div>
+                                        <div class="analytics-type">${item.type}</div>
+                                    </div>
+                                `;
+                            });
+                        } else {
+                            analyticsHtml = '<div>Analytics not available</div>';
+                        }
+                        $('#posts').append(`
+                            <div class="post-card">
+                                <div class="post-content">${post.content}</div>
+                                <div class="post-analytics">
+                                    ${analyticsHtml}
+                                </div>
+                                <div class="post-timestamp">${new Date(post.timestamp).toLocaleString()}</div>
+                            </div>
+                        `);
+                    });
+                }).fail(function(jqXHR, textStatus, errorThrown) {
+                    console.error("Error fetching posts:", textStatus, errorThrown);
+                });
+            }
+
+            $('#submit-post').click(function() {
+                const content = $('#post-content').val();
+                if (content) {
+                    $.ajax({
+                        url: '/api/post',
+                        method: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({ content: content }),
+                        success: function(response) {
+                            $('#post-content').val('');
+                            updatePosts();
+                        },
+                        error: function(jqXHR, textStatus, errorThrown) {
+                            console.error("Error posting:", textStatus, errorThrown);
+                        }
+                    });
+                }
+            });
+
+            socket.on('update', function(data) {
+                console.log("Received update event:", data);  // Debug log
+                updatePosts();
+            });
+
+            updatePosts();  // Initial update
+        });
+    </script>
+</body>
+</html>
